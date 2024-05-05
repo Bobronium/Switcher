@@ -56,9 +56,6 @@ class PlaybackDetector: ObservableObject {
             if let elapsedTime = info["kMRMediaRemoteNowPlayingInfoElapsedTime"] as? TimeInterval {
                 if self.previousElapsedTime != -1 && self.previousElapsedTime != elapsedTime {
                     self.deviceSwitcher.switchToBuiltInMic()
-                    print("Playback has started or is continuing. \(self.previousElapsedTime) \(elapsedTime)")
-                } else {
-                    print("Playback is not detected \(self.previousElapsedTime) \(elapsedTime)")
                 }
                 self.previousElapsedTime = elapsedTime
             }
