@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		18AA45602BE7B2B600A9116C /* SwitcherApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18AA455F2BE7B2B600A9116C /* SwitcherApp.swift */; };
-		18AA45622BE7B2B600A9116C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18AA45612BE7B2B600A9116C /* ContentView.swift */; };
 		18AA45642BE7B2B800A9116C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 18AA45632BE7B2B800A9116C /* Assets.xcassets */; };
 		18AA45672BE7B2B800A9116C /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 18AA45662BE7B2B800A9116C /* Preview Assets.xcassets */; };
 		18AA45722BE7B2B800A9116C /* SwitcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18AA45712BE7B2B800A9116C /* SwitcherTests.swift */; };
@@ -36,7 +35,6 @@
 /* Begin PBXFileReference section */
 		18AA455C2BE7B2B600A9116C /* Switcher.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Switcher.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		18AA455F2BE7B2B600A9116C /* SwitcherApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitcherApp.swift; sourceTree = "<group>"; };
-		18AA45612BE7B2B600A9116C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		18AA45632BE7B2B800A9116C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		18AA45662BE7B2B800A9116C /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		18AA45682BE7B2B800A9116C /* Switcher.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Switcher.entitlements; sourceTree = "<group>"; };
@@ -96,7 +94,6 @@
 			isa = PBXGroup;
 			children = (
 				18AA455F2BE7B2B600A9116C /* SwitcherApp.swift */,
-				18AA45612BE7B2B600A9116C /* ContentView.swift */,
 				18AA45632BE7B2B800A9116C /* Assets.xcassets */,
 				18AA45682BE7B2B800A9116C /* Switcher.entitlements */,
 				18AA45652BE7B2B800A9116C /* Preview Content */,
@@ -259,7 +256,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				18AA45622BE7B2B600A9116C /* ContentView.swift in Sources */,
 				18AA45602BE7B2B600A9116C /* SwitcherApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
