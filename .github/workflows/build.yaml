@@ -20,7 +20,7 @@ jobs:
           action: build
 
       - name: Archive Build Artifacts
-        run: zip -r Switcher-${{ github.ref_name == contains(github.ref, 'refs/tags/v') && github.ref_name || github.run_number }}.zip build/Release
+        run: zip -r Switcher-${{ github.ref_name == contains(github.ref, 'refs/tags/v') && github.ref_name || github.run_number }}.zip Switcher.app
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v3
