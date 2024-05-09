@@ -24,10 +24,6 @@ jobs:
           configuration: Release
           action: build
 
-      - name: Build Xcode project
-        run: |
-          xcodebuild -project Switcher.xcodeproj -configuration Release -arch x86_64 -arch arm64 -sdk macosx build
-
       - name: Archive Build Artifacts
         run: zip -r Switcher-${{ github.ref_name == contains(github.ref, 'refs/tags/v') && github.ref_name || github.run_number }}.zip build/Release
 
