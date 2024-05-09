@@ -24,13 +24,13 @@ jobs:
         run: ls && ls build/Release 
        
       - name: Archive Build Artifacts
-        run: zip -r Switcher-${{ github.ref_name == contains(github.ref, 'refs/tags/v') && github.ref_name || github.run_number }}.zip build/Release
+        run: zip -r Switcher-${{ github.ref_type == 'tag' && github.ref_name || github.sha }}.zip build/Release
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v3
         with:
           name: Switcher-Build
-          path: Switcher-${{ github.ref_name == contains(github.ref, 'refs/tags/v') && github.ref_name || github.run_number }}.zip
+          path: Switcher-${{ github.ref_type == 'tag' && github.ref_name || github.sha }}.zip
 
   release:
     name: Release Switcher
@@ -38,7 +38,7 @@ jobs:
       contents: write
     runs-on: macos-latest
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.ref_type == 'tag'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
