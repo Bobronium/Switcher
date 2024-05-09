@@ -15,6 +15,15 @@ jobs:
         with:
           xcode-version: 'latest'
 
+      - name: Build Xcode project 
+        uses: sersoft-gmbh/xcodebuild-action@v3
+        with:
+          project: Switcher.xcodeproj
+          scheme: Switcher
+          destination: platform=macOS
+          configuration: Release
+          action: build
+
       - name: Build Xcode project
         run: |
           xcodebuild -project Switcher.xcodeproj -configuration Release -arch x86_64 -arch arm64 -sdk macosx build
