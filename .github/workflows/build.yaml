@@ -48,6 +48,8 @@ jobs:
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
+        permissions:
+          contents: write
         with:
           files: Switcher-${{ github.ref_name }}.zip
         env:
