@@ -9,18 +9,30 @@ import SwiftUI
 import CoreAudio
 import Foundation
 
-// Assume CFBundleRef and function types are set up here as in your original snippet
+
+class AppState: ObservableObject {
+    @Published var isMonitoring: Bool = false
+    @Published var currentDevice: String = "Unknown"
+    @Published var switchCount: Int = UserDefaults.standard.integer(forKey: "switchCount")
+
+    func incrementSwitchCount() {
+        switchCount += 1
+        UserDefaults.standard.set(switchCount, forKey: "switchCount")
+    }
+}
 
 class PlaybackDetector: ObservableObject {
     private var previousElapsedTime: TimeInterval = -1
     @Published var isMonitoring = false
     private var timer: Timer?
     private var deviceSwitcher: DeviceSwitcher
-    
-    init () {
+    private var appState: AppState
+
+    init(appState: AppState) {
         self.deviceSwitcher = DeviceSwitcher()
+        self.appState = appState
     }
-    
+
     func toggleMonitoring() {
         if isMonitoring {
             stopMonitoring()
@@ -28,10 +40,10 @@ class PlaybackDetector: ObservableObject {
             startMonitoring()
         }
         isMonitoring.toggle()
+        appState.isMonitoring = isMonitoring
     }
 
     private func startMonitoring() {
-        // Setup timer to periodically check playback status
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             self?.checkPlayback()
         }
@@ -41,7 +53,6 @@ class PlaybackDetector: ObservableObject {
         timer?.invalidate()
         timer = nil
     }
-    
     @objc private func checkPlayback() {
         let bundleURL = NSURL(fileURLWithPath: "/System/Library/PrivateFrameworks/MediaRemote.framework")
         guard let bundle = CFBundleCreate(kCFAllocatorDefault, bundleURL) else { return }
@@ -60,13 +71,18 @@ class PlaybackDetector: ObservableObject {
                 self.previousElapsedTime = elapsedTime
             }
         }
+        DispatchQueue.main.async {
+            self.appState.currentDevice = self.deviceSwitcher.getCurrentDeviceName()
+            self.appState.incrementSwitchCount()
+        }
     }
 }
+
 
 class DeviceSwitcher {
     var currentInputDeviceID: AudioDeviceID?
     var builtInInputDeviceID: AudioDeviceID?
-    
+
     init() {
         // Initialize with the default and built-in mic device IDs
         self.currentInputDeviceID = getCurrentInputDevice()
@@ -164,19 +180,55 @@ class DeviceSwitcher {
             print("Restored default input device.")
         }
     }
+
+    func getCurrentDeviceName() -> String {
+        let deviceID = getCurrentInputDevice()
+        var name: CFString = "" as CFString
+        var propertySize = UInt32(MemoryLayout<CFString>.size)
+        var propertyAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyDeviceNameCFString,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain)
+
+        AudioObjectGetPropertyData(deviceID, &propertyAddress, 0, nil, &propertySize, &name)
+        return name as String
+    }
+}
+
+struct MenuBarView: View {
+    @ObservedObject var appState: AppState
+    var playbackDetector: PlaybackDetector
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Toggle("Monitoring", isOn: Binding(
+                get: { self.appState.isMonitoring },
+                set: { _ in self.playbackDetector.toggleMonitoring() }
+            ))
+
+            Text("Current Device: \(appState.currentDevice)")
+            Text("Switch Count: \(appState.switchCount)")
+        }
+        .padding()
+        .frame(width: 200)
+    }
 }
 
 @main
-struct MyApp: App {
-    private let playbackDetector = PlaybackDetector()
+struct SwitcherApp: App {
+    @StateObject private var appState = AppState()
+    private var playbackDetector: PlaybackDetector
 
     init() {
+        let appState = AppState()
+        self._appState = StateObject(wrappedValue: appState)
+        self.playbackDetector = PlaybackDetector(appState: appState)
         playbackDetector.toggleMonitoring() // Start monitoring on app start
     }
 
     var body: some Scene {
-        Settings {
-            EmptyView() // Provide an empty view, as no UI is required
+        MenuBarExtra("Switcher", systemImage: "mic") {
+            MenuBarView(appState: appState, playbackDetector: playbackDetector)
         }
     }
-}   
+}
