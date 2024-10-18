@@ -8,7 +8,7 @@
 import SwiftUI
 import CoreAudio
 import Foundation
-
+import ServiceManagement
 
 class AppState: ObservableObject {
     @Published var isMonitoring: Bool = false
@@ -34,26 +34,31 @@ class PlaybackDetector: ObservableObject {
     }
 
     func toggleMonitoring() {
-        if isMonitoring {
-            stopMonitoring()
-        } else {
+        if !isMonitoring {
             startMonitoring()
         }
         isMonitoring.toggle()
         appState.isMonitoring = isMonitoring
     }
 
-    private func startMonitoring() {
+    func startMonitoring() {
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             self?.checkPlayback()
         }
+        if deviceSwitcher.switchToBuiltInMic() {
+            DispatchQueue.main.async {
+                self.appState.incrementSwitchCount()
+            }
+        }
     }
 
-    private func stopMonitoring() {
-        timer?.invalidate()
-        timer = nil
-    }
     @objc private func checkPlayback() {
+        DispatchQueue.main.async {
+            self.appState.currentDevice = self.deviceSwitcher.getCurrentDeviceName()
+        }
+        if !isMonitoring {
+            return
+        }
         let bundleURL = NSURL(fileURLWithPath: "/System/Library/PrivateFrameworks/MediaRemote.framework")
         guard let bundle = CFBundleCreate(kCFAllocatorDefault, bundleURL) else { return }
 
@@ -66,18 +71,17 @@ class PlaybackDetector: ObservableObject {
             guard let self = self, let info = info else { return }
             if let elapsedTime = info["kMRMediaRemoteNowPlayingInfoElapsedTime"] as? TimeInterval {
                 if self.previousElapsedTime != -1 && self.previousElapsedTime != elapsedTime {
-                    self.deviceSwitcher.switchToBuiltInMic()
+                    if self.deviceSwitcher.switchToBuiltInMic() {
+                        DispatchQueue.main.async {
+                            self.appState.incrementSwitchCount()
+                        }
+                    }
                 }
                 self.previousElapsedTime = elapsedTime
             }
         }
-        DispatchQueue.main.async {
-            self.appState.currentDevice = self.deviceSwitcher.getCurrentDeviceName()
-            self.appState.incrementSwitchCount()
-        }
     }
 }
-
 
 class DeviceSwitcher {
     var currentInputDeviceID: AudioDeviceID?
@@ -130,7 +134,7 @@ class DeviceSwitcher {
         }
     }
 
-    func getBuiltInInputDeviceID() -> AudioDeviceID {
+    func getBuiltInInputDeviceID() -> Optional<AudioDeviceID> {
         var size = UInt32(0)
         var addr = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDevices,
@@ -161,16 +165,23 @@ class DeviceSwitcher {
             }
         }
 
-        return kAudioObjectUnknown
+        return nil
     }
 
     /// Switch to the built-in microphone.
-    func switchToBuiltInMic() {
-        self.currentInputDeviceID = getCurrentInputDevice()
-        if let builtInMicID = self.builtInInputDeviceID {
+    func switchToBuiltInMic() -> Bool {
+        guard let builtInMicID = self.builtInInputDeviceID ?? getBuiltInInputDeviceID() else {
+            return false
+        }
+
+        let currentMicID = getCurrentInputDevice()
+        if builtInMicID != currentMicID {
             setCurrentInputDevice(to: builtInMicID)
             print("Switched to built-in microphone.")
+            return true
         }
+
+        return false
     }
 
     /// Restore the default input device.
@@ -201,17 +212,58 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Toggle("Monitoring", isOn: Binding(
+            Toggle("Enable", isOn: Binding(
                 get: { self.appState.isMonitoring },
                 set: { _ in self.playbackDetector.toggleMonitoring() }
             ))
 
-            Text("Current Device: \(appState.currentDevice)")
-            Text("Switch Count: \(appState.switchCount)")
+            Toggle("Launch at Login", isOn: Binding(
+                get: { SMAppService.mainApp.status == .enabled },
+                set: { newValue in
+                    if newValue {
+                        enableLaunchAtLogin()
+                    } else {
+                        disableLaunchAtLogin()
+                    }
+                }
+            ))
+
+            Text("Current Microphone: \(appState.currentDevice)")
+            Text("Saved your ears for \(appState.switchCount) times!")
+
+            Button("Quit") {
+                NSApplication.shared.terminate(nil)
+            }
         }
         .padding()
         .frame(width: 200)
     }
+}
+
+func enableLaunchAtLogin() {
+    do {
+        try SMAppService.mainApp.register()
+        print("Successfully enabled launch at login")
+    } catch {
+        print("Failed to enable launch at login: \(error.localizedDescription)")
+    }
+}
+
+func disableLaunchAtLogin() {
+    do {
+        try SMAppService.mainApp.unregister()
+        print("Successfully disabled launch at login")
+    } catch {
+        print("Failed to disable launch at login: \(error.localizedDescription)")
+    }
+
+    // for some weird reason, app still remains in Login Items, despite the call above should get rid of it.
+    // this should do the trick:
+    let process = Process()
+    process.launchPath = "/usr/bin/env"
+    process.arguments = ["osascript", "-e", "tell application \"System Events\" to delete login item \"Switcher\""]
+    process.launch()
+    process.waitUntilExit()
 }
 
 @main
@@ -223,7 +275,7 @@ struct SwitcherApp: App {
         let appState = AppState()
         self._appState = StateObject(wrappedValue: appState)
         self.playbackDetector = PlaybackDetector(appState: appState)
-        playbackDetector.toggleMonitoring() // Start monitoring on app start
+        playbackDetector.toggleMonitoring()
     }
 
     var body: some Scene {
