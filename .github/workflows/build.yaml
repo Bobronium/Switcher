@@ -10,7 +10,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Build Xcode project 
+      - name: Build Xcode project
         uses: sersoft-gmbh/xcodebuild-action@v3
         with:
           project: Switcher.xcodeproj
@@ -20,17 +20,24 @@ jobs:
           action: build
           build-settings: CONFIGURATION_BUILD_DIR=build/Release
 
-      - name: Debug
-        run: ls && ls build/Release 
-       
+      - name: Create .dmg
+        run: |
+          mkdir -p build/dmg/Switcher
+          cp -R build/Release/Switcher.app build/dmg/Switcher/
+          ln -s /Applications build/dmg/Switcher/Applications
+          hdiutil create -volname Switcher \
+                         -srcfolder build/dmg/Switcher \
+                         -ov -format UDRO \
+                         build/dmg/Switcher-${{ github.ref_type == 'tag' && github.ref_name || github.sha }}.dmg
+
       - name: Archive Build Artifacts
-        run: zip -r Switcher-${{ github.ref_type == 'tag' && github.ref_name || github.sha }}.zip build/Release
+        run: ls build/dmg && echo ".dmg packaging completed."
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v3
         with:
           name: Switcher-Build
-          path: Switcher-${{ github.ref_type == 'tag' && github.ref_name || github.sha }}.zip
+          path: build/dmg/Switcher-${{ github.ref_type == 'tag' && github.ref_name || github.sha }}.dmg
 
   release:
     name: Release Switcher
@@ -48,9 +55,18 @@ jobs:
         with:
           name: Switcher-Build
 
+      - name: Update Homebrew Formula
+        run: |
+          checksum=$(shasum -a 256 build/dmg/Switcher-${{ github.ref_name }}.dmg | awk '{ print $1 }')
+          sed -i '' "s/^  sha256 \".*\"/  sha256 \"${checksum}\"/" Formula/switcher.rb
+          sed -i '' "s|^  url \".*\"|  url \"https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Switcher-${{ github.ref_name }}.dmg\"|" Formula/switcher.rb
+          sed -i '' "s|^  app \".*\"|  app \"Switcher.app\"|" Formula/switcher.rb
+      - name: Commit and Push Changes
+        uses: actions4git/add-commit-push@v1
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: Switcher-${{ github.ref_name }}.zip
+          files: build/dmg/Switcher-${{ github.ref_name }}.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
