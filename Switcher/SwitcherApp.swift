@@ -25,7 +25,7 @@ class PlaybackDetector: ObservableObject {
     private var previousElapsedTime: TimeInterval = -1
     @Published var isMonitoring = false
     private var timer: Timer?
-    private var deviceSwitcher: DeviceSwitcher
+    var deviceSwitcher: DeviceSwitcher
     private var appState: AppState
 
     init(appState: AppState) {
@@ -53,9 +53,6 @@ class PlaybackDetector: ObservableObject {
     }
 
     @objc private func checkPlayback() {
-        DispatchQueue.main.async {
-            self.appState.currentDevice = self.deviceSwitcher.getCurrentDeviceName()
-        }
         if !isMonitoring {
             return
         }
@@ -86,11 +83,17 @@ class PlaybackDetector: ObservableObject {
 class DeviceSwitcher {
     var currentInputDeviceID: AudioDeviceID?
     var builtInInputDeviceID: AudioDeviceID?
+    var preferredInputDeviceID: AudioDeviceID? // Track the preferred device, even if unavailable
 
     init() {
-        // Initialize with the default and built-in mic device IDs
         self.currentInputDeviceID = getCurrentInputDevice()
         self.builtInInputDeviceID = getBuiltInInputDeviceID()
+        self.preferredInputDeviceID = builtInInputDeviceID // Default to built-in mic if no preference
+    }
+
+    /// Set the preferred input device (user-selected)
+    func setPreferredInputDevice(to deviceID: AudioDeviceID) {
+        self.preferredInputDeviceID = deviceID
     }
 
     /// Retrieves the current input device ID.
@@ -114,61 +117,116 @@ class DeviceSwitcher {
         return defaultDeviceID
     }
 
+    /// Set the system's default input device to the given device ID
     func setCurrentInputDevice(to deviceID: AudioDeviceID) {
         var propertyAddress = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDefaultInputDevice,
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain)
-        let propertySize = UInt32(MemoryLayout.size(ofValue: deviceID))
         var mutableDeviceID = deviceID
+        let propertySize = UInt32(MemoryLayout.size(ofValue: mutableDeviceID))
+
         let status = AudioObjectSetPropertyData(
             AudioObjectID(kAudioObjectSystemObject),
             &propertyAddress,
             0,
             nil,
             propertySize,
-            &mutableDeviceID)
+            &mutableDeviceID
+        )
 
         if status != noErr {
             print("Error setting the default input device.")
+        } else {
+            print("Successfully set the input device to ID \(deviceID)")
         }
     }
 
-    func getBuiltInInputDeviceID() -> Optional<AudioDeviceID> {
+    /// Get the list of available input devices
+    func getAvailableInputDevices() -> [(id: AudioDeviceID, name: String)] {
         var size = UInt32(0)
         var addr = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDevices,
-            mScope: kAudioObjectPropertyScopeGlobal,
+            mScope: kAudioObjectPropertyScopeGlobal, // Get all devices first
             mElement: kAudioObjectPropertyElementMain)
 
         // Get the number of devices
         AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size)
         let deviceCount = Int(size) / MemoryLayout<AudioDeviceID>.size
-
-        // Allocate memory for the array of AudioDeviceIDs
         var audioDevices = [AudioDeviceID](repeating: 0, count: deviceCount)
         AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size, &audioDevices)
 
+        var availableInputDevices: [(id: AudioDeviceID, name: String)] = []
+
         for device in audioDevices {
-            var transportType: UInt32 = 0
+            var inputStreamCount: UInt32 = 0
             var propertySize = UInt32(MemoryLayout<UInt32>.size)
-            var transportTypeAddr = AudioObjectPropertyAddress(
-                mSelector: kAudioDevicePropertyTransportType,
-                mScope: kAudioObjectPropertyScopeGlobal,
+            var inputScopeAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyStreams, // Check for input streams
+                mScope: kAudioObjectPropertyScopeInput, // Input scope
                 mElement: kAudioObjectPropertyElementMain)
 
-            // Get the transport type of the device
-            AudioObjectGetPropertyData(device, &transportTypeAddr, 0, nil, &propertySize, &transportType)
+            // Check if the device has input streams
+            let status = AudioObjectGetPropertyData(device, &inputScopeAddress, 0, nil, &propertySize, &inputStreamCount)
 
-            if transportType == kAudioDeviceTransportTypeBuiltIn {
-                return device
+            if status == noErr && inputStreamCount > 0 { // If the device supports input
+                var name: CFString = "" as CFString
+                var namePropertySize = UInt32(MemoryLayout<CFString>.size)
+                var namePropertyAddress = AudioObjectPropertyAddress(
+                    mSelector: kAudioDevicePropertyDeviceNameCFString,
+                    mScope: kAudioObjectPropertyScopeGlobal,
+                    mElement: kAudioObjectPropertyElementMain)
+
+                // Use `withUnsafeMutablePointer` to safely fetch the device name
+                let nameStatus = withUnsafeMutablePointer(to: &name) { namePtr in
+                    namePtr.withMemoryRebound(to: UInt8.self, capacity: MemoryLayout<CFString>.size) {
+                        AudioObjectGetPropertyData(device, &namePropertyAddress, 0, nil, &namePropertySize, $0)
+                    }
+                }
+
+                if nameStatus == noErr {
+                    availableInputDevices.append((id: device, name: name as String))
+                }
             }
         }
 
-        return nil
+        return availableInputDevices
     }
 
-    /// Switch to the built-in microphone.
+    /// Check if the preferred device is still available
+    func isPreferredDeviceAvailable() -> Bool {
+        guard let preferredDeviceID = preferredInputDeviceID else {
+            return false
+        }
+        let availableDevices = getAvailableInputDevices()
+        return availableDevices.contains { $0.id == preferredDeviceID }
+    }
+
+    /// Switch to the preferred microphone, if available. If not, fallback to the built-in mic.
+    func switchToPreferredDevice() -> Bool {
+        guard let preferredDeviceID = self.preferredInputDeviceID else {
+            return false
+        }
+
+        // Check if the preferred device is available
+        if isPreferredDeviceAvailable() {
+            let currentMicID = getCurrentInputDevice()
+            if preferredDeviceID != currentMicID {
+                setCurrentInputDevice(to: preferredDeviceID)
+                print("Switched to preferred input device with ID \(preferredDeviceID).")
+                return true
+            }
+        } else {
+            // Preferred device is not available, fallback to built-in mic
+            print("Preferred device unavailable, switching to built-in mic.")
+            if switchToBuiltInMic() {
+                return true
+            }
+        }
+        return false
+    }
+
+    /// Fallback to built-in microphone.
     func switchToBuiltInMic() -> Bool {
         guard let builtInMicID = self.builtInInputDeviceID ?? getBuiltInInputDeviceID() else {
             return false
@@ -184,14 +242,36 @@ class DeviceSwitcher {
         return false
     }
 
-    /// Restore the default input device.
-    func restoreDefaultInputDevice() {
-        if let defaultDeviceID = self.currentInputDeviceID {
-            setCurrentInputDevice(to: defaultDeviceID)
-            print("Restored default input device.")
-        }
-    }
+    // Helper to retrieve the built-in microphone device ID
+    func getBuiltInInputDeviceID() -> Optional<AudioDeviceID> {
+        var size = UInt32(0)
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain)
 
+        AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size)
+        let deviceCount = Int(size) / MemoryLayout<AudioDeviceID>.size
+        var audioDevices = [AudioDeviceID](repeating: 0, count: deviceCount)
+        AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size, &audioDevices)
+
+        for device in audioDevices {
+            var transportType: UInt32 = 0
+            var propertySize = UInt32(MemoryLayout<UInt32>.size)
+            var transportTypeAddr = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyTransportType,
+                mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain)
+
+            AudioObjectGetPropertyData(device, &transportTypeAddr, 0, nil, &propertySize, &transportType)
+
+            if transportType == kAudioDeviceTransportTypeBuiltIn {
+                return device
+            }
+        }
+
+        return nil
+    }
     func getCurrentDeviceName() -> String {
         let deviceID = getCurrentInputDevice()
         var name: CFString = "" as CFString
@@ -209,6 +289,8 @@ class DeviceSwitcher {
 struct MenuBarView: View {
     @ObservedObject var appState: AppState
     var playbackDetector: PlaybackDetector
+    @State private var selectedDeviceID: AudioDeviceID?
+    @State private var availableDevices: [(id: AudioDeviceID, name: String)] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -216,21 +298,18 @@ struct MenuBarView: View {
                 get: { self.appState.isMonitoring },
                 set: { _ in self.playbackDetector.toggleMonitoring() }
             ))
-
-            Toggle("Launch at Login", isOn: Binding(
-                get: { SMAppService.mainApp.status == .enabled },
-                set: { newValue in
-                    if newValue {
-                        enableLaunchAtLogin()
-                    } else {
-                        disableLaunchAtLogin()
-                    }
-                }
-            ))
-
-            Text("Current Microphone: \(appState.currentDevice)")
+// For some weird reason it doesn't work as intended. Checkbox doesnt' appear.
+//            Toggle("Launch at Login", isOn: Binding(
+//                get: { SMAppService.mainApp.status == .enabled },
+//                set: { newValue in
+//                    if newValue {
+//                        enableLaunchAtLogin()
+//                    } else {
+//                        disableLaunchAtLogin()
+//                    }
+//                }
+//            ))
             Text("Saved your ears for \(appState.switchCount) times!")
-
             Button("Quit") {
                 NSApplication.shared.terminate(nil)
             }
