@@ -1,13 +1,15 @@
-# Switcher
+<p align="center">
+  <img src="Switcher/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png" alt="App Icon" width="256" height="256">
+</p>
 
-**Switcher** is a macOS utility designed to enhance the sound quality of AirPods (Max/Pro) and other Bluetooth headphones when connected to a Mac.
+<h2 align="center"><strong>Switcher</strong> saves you from shitty sound when using a microphone with Bluetooth headphones macOS</h2>
 
 ## The Problem
 
-Many users experience significantly degraded sound quality when using AirPods with their Mac. 
-This issue commonly arises due to the Mac automatically switching the sound input to the AirPods' microphone, which triggers the use of a lower-quality audio codec (HFP - Hands-Free Profile).
+Bluetooth doesn't have enough bandwidth to support high-quality audio and microphone input simultaneously. When you connect your AirPods to your Mac, the system may switch to the HFP codec to enable the microphone.
+This codec is designed for phone calls and has a lower audio quality than the A2DP codec used for music playback.
 
-A user on Reddit, [Tom-Solid](https://www.reddit.com/r/airpods/comments/11zhtj0/finally_quick_fix_for_poor_sound_quality_on_mac/), describes the issue:
+[Tom-Solid](https://www.reddit.com/r/airpods/comments/11zhtj0/finally_quick_fix_for_poor_sound_quality_on_mac/), describes the issue:
 
 > "The sound was tinny, lacked bass, and was marred by crackling sounds... It turns out that using the AirPods' microphone on a Mac may automatically switch to HFP, which results in poor audio quality even during playback."
 
