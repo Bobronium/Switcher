@@ -104,13 +104,9 @@ jobs:
       - name: 🔍 Calculate Checksum
         run: |
           sha256sum Switcher-${{ github.ref_name }}.dmg | awk '{ print $1 }' > /tmp/checksum
-          echo "::set-output name=checksum::$(cat /tmp/checksum)"
-
-      - name: 📝 Update Homebrew Formula
-        run: |
           formula_file="Formula/switcher.rb"
           tag="${{ github.ref_name }}"
-          checksum="${{ steps.calculate-checksum.outputs.checksum }}"
+          checksum="$(cat /tmp/checksum)"
           
           sed -i "s|version \".*\"|version \"${tag#v}\"|" "$formula_file"
           sed -i "s|sha256 \".*\"|sha256 \"$checksum\"|" "$formula_file"
