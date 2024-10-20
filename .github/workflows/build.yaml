@@ -52,7 +52,8 @@ jobs:
 
       - name: Update Homebrew Formula
         run: |
-          checksum=$(shasum -a 256 build/dmg/Switcher-${{ github.ref_name }}.dmg | awk '{ print $1 }')
+          shasum -a 256 Switcher-${{ github.ref_name }}.dmg | awk '{ print $1 }' > /tmp/checksum
+          checksum=$(cat /tmp/checksum)
           sed -i '' "s/^  sha256 \".*\"/  sha256 \"${checksum}\"/" Formula/switcher.rb
           sed -i '' "s|^  url \".*\"|  url \"https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Switcher-${{ github.ref_name }}.dmg\"|" Formula/switcher.rb
           sed -i '' "s|^  app \".*\"|  app \"Switcher.app\"|" Formula/switcher.rb
