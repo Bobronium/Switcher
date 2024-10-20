@@ -1,4 +1,4 @@
-name: 🎉 Release Switcher
+name: 🚀 CI
 
 on:
   push:
@@ -38,6 +38,8 @@ jobs:
         uses: actions4git/setup-git@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🍺 Update Homebrew Formula
         run: |
           sha256sum build/dmg/Switcher-${{ github.ref_name }}.dmg | awk '{ print $1 }' > /tmp/checksum
           checksum=$(cat /tmp/checksum)
