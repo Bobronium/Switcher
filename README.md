@@ -49,7 +49,7 @@ or see manual installation instructions below.
    - Download the `Switcher-vX.X.X.dmg` from the [latest release](https://github.com/Bobronium/Switcher/releases/latest) or build application from the source code.
 
 2. **Install the Application**
-   - Open `Switcher-vX.X.X.dmg` folder.
+   - Open `Switcher-vX.X.X.dmg`.
    - Drag `Switcher.app` to the `Applications` folder on your Mac.
 
 3. **Set to Launch at Login**
