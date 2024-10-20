@@ -72,7 +72,7 @@ jobs:
 
       - name: 🍺 Update Homebrew Formula
         run: |
-          sha256sum build/dmg/Switcher-${{ github.ref_name }}.dmg | awk '{ print $1 }' > /tmp/checksum
+          sha256sum Switcher-${{ github.ref_name }}.dmg | awk '{ print $1 }' > /tmp/checksum
           checksum=$(cat /tmp/checksum)
           git clone https://github.com/Bobronium/homebrew-tap.git
           cd homebrew-tap
