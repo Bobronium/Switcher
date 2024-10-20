@@ -69,7 +69,6 @@ or see manual installation instructions below.
 ```bash
 curl https://parsefiles.back4app.com/JPaQcFfEEQ1ePBxbf6wvzkPMEqKYHhPYv8boI1Rc/f76537cc3a5709222e29fe1fa9d85595_1708726295537.icns -o original_icon.icns
 uv run stylize_icons.py original_icon.icns switcher.icns --jpeg-quality 10 --pixelation-factor 16 --saturation-factor 0.24 --angle 109 --pixelated-line --offset 11
-uv run stylize_icons.py original_icon.icns switcher.icns --jpeg-quality 10 --pixelation-factor 16 --saturation-factor 0.24 --angle 109 --pixelated-line --offset 11
 uv run stylize_icons.py switcher.icns switcher.icns      --jpeg-quality 8  --pixelation-factor 1  --saturation-factor 1    --angle 109 --pixelated-line --offset 11
 uv run icns_to_appiconset.py switcher.icns Switcher/Assets.xcassets/AppIcon.appiconset
 ```
