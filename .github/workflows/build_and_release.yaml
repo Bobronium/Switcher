@@ -38,6 +38,7 @@ jobs:
   cd:
     name: 🚀 Release
     needs: ci
+    if: github.ref_type == 'tag'
     permissions:
       contents: write
     runs-on: ubuntu-latest
