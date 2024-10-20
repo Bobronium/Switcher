@@ -1,17 +1,46 @@
-name: 🚀 CI
+name: 🏗️ CI/CD
 
-on:
-  push:
-    tags:
-      - '*'
+on: push
 
 jobs:
-  release:
-    name: 🚀 Release Switcher
+  ci:
+    name: 🛠️ Build
+    runs-on: macos-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔨 Build Xcode project
+        uses: sersoft-gmbh/xcodebuild-action@v3
+        with:
+          project: Switcher.xcodeproj
+          scheme: Switcher
+          destination: platform=macOS
+          configuration: Release
+          action: build
+          build-settings: CONFIGURATION_BUILD_DIR=build/Release
+
+      - name: 💿 Create .dmg
+        run: |
+          mkdir -p build/dmg/Switcher
+          cp -R build/Release/Switcher.app build/dmg/Switcher/
+          ln -s /Applications build/dmg/Switcher/Applications
+          hdiutil create -volname Switcher \
+                         -srcfolder build/dmg/Switcher \
+                         -ov -format UDRO \
+                         build/dmg/Switcher-${{ github.ref_type == 'tag' && github.ref_name || github.sha }}.dmg
+
+      - name: 💎 Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Switcher-Build
+          path: build/dmg/Switcher-${{ github.ref_type == 'tag' && github.ref_name || github.sha }}.dmg
+  cd:
+    name: 🚀 Release
+    needs: ci
     permissions:
       contents: write
     runs-on: ubuntu-latest
-    needs: build
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
