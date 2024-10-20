@@ -68,8 +68,7 @@ jobs:
 
   update-formula:
     runs-on: ubuntu-latest
-#    needs: release
-
+    needs: release
     steps:
       # I have no idea if it's actually necessary to install Git on the runner
       # but checkout didn't work with available version over SSH.
