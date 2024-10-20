@@ -8,7 +8,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Build Xcode project
         uses: sersoft-gmbh/xcodebuild-action@v3
@@ -34,7 +34,7 @@ jobs:
         run: ls build/dmg && echo ".dmg packaging completed."
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Switcher-Build
           path: build/dmg/Switcher-${{ github.ref_type == 'tag' && github.ref_name || github.sha }}.dmg
@@ -48,12 +48,7 @@ jobs:
     if: github.ref_type == 'tag'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Download Build Artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: Switcher-Build
+        uses: actions/checkout@v4
 
       - name: Update Homebrew Formula
         run: |
