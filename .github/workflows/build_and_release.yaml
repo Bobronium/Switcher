@@ -3,7 +3,7 @@ name: 🏗️ CI/CD
 on: push
 
 jobs:
-  ci:
+  build:
     name: 🛠️ Build
     runs-on: macos-latest
     steps:
@@ -35,7 +35,8 @@ jobs:
         with:
           name: Switcher-Build
           path: build/dmg/Switcher-${{ github.ref_type == 'tag' && github.ref_name || github.sha }}.dmg
-  cd:
+
+  release:
     name: 🚀 Release
     needs: ci
     if: github.ref_type == 'tag'
@@ -65,21 +66,56 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 🍺 Update Homebrew Formula
-        uses: actions4git/setup-git@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  update-formula:
+    runs-on: ubuntu-latest
+    steps:
+      # I have no idea if it's actually necessary to install Git on the runner
+      # but checkout didn't work with available version over SSH.
+      # this is just the first configuration that worked for me.
+      # So, doing everything manually.
+      - name: 🛠️ Install Git
+        run: |
+          apt update
+          apt install -y git
 
-      - name: 🍺 Update Homebrew Formula
+      - name: 🛠️ Setup Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: 🔑 Add GitHub to Known Hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+
+      - name: 🔑 Setup SSH Agent
+        run: |
+          apt install -y openssh-client
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/id_ed25519
+
+      - name: 🛠️ Checkout Homebrew Tap Repo
+        run : |
+          git clone git@github.com:Bobronium/homebrew-tap.git .
+
+      - name: 🔍 Calculate Checksum
         run: |
           sha256sum Switcher-${{ github.ref_name }}.dmg | awk '{ print $1 }' > /tmp/checksum
-          checksum=$(cat /tmp/checksum)
-          git clone https://github.com/Bobronium/homebrew-tap.git
-          cd homebrew-tap
+          echo "::set-output name=checksum::$(cat /tmp/checksum)"
+
+      - name: 📝 Update Homebrew Formula
+        run: |
           formula_file="Formula/switcher.rb"
           tag="${{ github.ref_name }}"
+          checksum="${{ steps.calculate-checksum.outputs.checksum }}"
+          
           sed -i "s|version \".*\"|version \"${tag#v}\"|" "$formula_file"
           sed -i "s|sha256 \".*\"|sha256 \"$checksum\"|" "$formula_file"
+
+      - name: 🚀 Commit and Push Changes
+        run: |
           git add Formula/switcher.rb
           git commit -m "Bump version to ${{ github.ref_name }}"
           git push
