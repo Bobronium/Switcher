@@ -1,9 +1,0 @@
-name: 🚀 CI
-
-on:
-  push:
-    tags:
-      - '*'
-
-jobs:
-
