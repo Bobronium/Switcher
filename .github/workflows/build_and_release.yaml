@@ -101,6 +101,11 @@ jobs:
         run : |
           git clone git@github.com:Bobronium/homebrew-tap.git .
 
+      - name: 📦 Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: Switcher-Build
+
       - name: 🔍 Calculate Checksum
         run: |
           sha256sum Switcher-${{ github.ref_name }}.dmg | awk '{ print $1 }' > /tmp/checksum
