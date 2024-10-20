@@ -78,8 +78,8 @@ jobs:
           cd homebrew-tap
           formula_file="Formula/switcher.rb"
           tag="${{ github.ref_name }}"
-          sed -i '' "s|version \".*\"|version \"${tag#v}\"|" "$formula_file"
-          sed -i '' "s|sha256 \".*\"|sha256 \"$checksum\"|" "$formula_file"
+          sed -i "s|version \".*\"|version \"${tag#v}\"|" "$formula_file"
+          sed -i "s|sha256 \".*\"|sha256 \"$checksum\"|" "$formula_file"
           git add Formula/switcher.rb
           git commit -m "Bump version to ${{ github.ref_name }}"
           git push
