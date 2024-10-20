@@ -77,8 +77,8 @@ jobs:
           git clone https://github.com/Bobronium/homebrew-tap.git
           cd homebrew-tap
           formula_file="Formula/switcher.rb"
-          version="${{ github.ref_name#v }}"
-          sed -i '' "s|version \".*\"|version \"$version\"|" "$formula_file"
+          tag="${{ github.ref_name }}"
+          sed -i '' "s|version \".*\"|version \"${tag#v}\"|" "$formula_file"
           sed -i '' "s|sha256 \".*\"|sha256 \"$checksum\"|" "$formula_file"
           git add Formula/switcher.rb
           git commit -m "Bump version to ${{ github.ref_name }}"
