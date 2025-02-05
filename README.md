@@ -2,7 +2,7 @@
   <img src="Switcher/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png" alt="App Icon" width="256" height="256">
 </p>
 
-<h2 align="center"><strong>Switcher</strong> saves you from shitty sound when using a microphone with Bluetooth headphones macOS</h2>
+<h2 align="center"><strong>Switcher</strong> saves you from shitty sound when using a microphone with Bluetooth headphones on macOS</h2>
 
 ## The Problem
 
@@ -34,8 +34,7 @@ Following these steps should immediately improve the sound quality.
 
 ### Homebrew
 ```shell
-brew tap Bobronium/tap
-brew install switcher
+brew install Bobronium/tap/switcher
 ```
 The application is using ad-hock signature, so you need to allow it in the system settings. The window will open automatically during the installation.
 
